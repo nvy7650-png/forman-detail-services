@@ -35,100 +35,115 @@
     <a href="tel:1900272703" class="call-button">☎</a>
 
     <script>
-        const API_BASE_URL = "https://webdatlichlamtoc.id.vn";
+    const API_BASE_URL = "https://webdatlichlamtoc.id.vn";
 
-        async function getPhuongTien(id_dich_vu) {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/phuong-tiens/${id_dich_vu}`);
-                if (!res.ok) return [];
-                const data = await res.json();
-                return Array.isArray(data) ? data : (data.data || []);
-            } catch (e) {
-                return [];
-            }
+    async function getPhuongTien(id_dich_vu) {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/phuong-tiens/${id_dich_vu}`);
+            if (!res.ok) return [];
+            const data = await res.json();
+            return Array.isArray(data) ? data : (data.data || []);
+        } catch (e) {
+            console.error("Lỗi lấy phương tiện:", e);
+            return [];
+        }
+    }
+
+    async function loadServiceDetail() {
+        const loading = document.getElementById('loading');
+        const container = document.getElementById('detailContent');
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const serviceId = urlParams.get('id');
+
+        if (!serviceId) {
+            container.innerHTML = `<p class="error-text">Không tìm thấy dịch vụ!</p>`;
+            return;
         }
 
-        async function loadServiceDetail() {
-            const loading = document.getElementById('loading');
-            const container = document.getElementById('detailContent');
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/services/${serviceId}`);
+            const result = await res.json();
 
-            const urlParams = new URLSearchParams(window.location.search);
-            const serviceId = urlParams.get('id');
-
-            if (!serviceId) {
-                container.innerHTML = `<p class="error-text">Không tìm thấy dịch vụ!</p>`;
+            if (!result.status || !result.data) {
+                loading.innerHTML = `<p class="error-text">Không tìm thấy thông tin dịch vụ.</p>`;
                 return;
             }
 
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/services/${serviceId}`);
-                const result = await res.json();
+            const service = result.data;
+            let phuongtiens = await getPhuongTien(service.id);
 
-                if (!result.status || !result.data) {
-                    loading.innerHTML = `<p class="error-text">Không tìm thấy thông tin dịch vụ.</p>`;
-                    return;
-                }
+            // Sắp xếp theo trường "thutu" tăng dần
+            phuongtiens.sort((a, b) => (a.thutu || 999) - (b.thutu || 999));
 
-                const service = result.data;
-                const phuongtiens = await getPhuongTien(service.id);
+            // Lấy ảnh/video đầu tiên theo thứ tự thutu
+            let mediaHTML = `<img src="image/b1.jpg" alt="${service.tendichvu}" class="detail-image">`;
 
-                let mediaHTML = `<img src="image/b1.jpg" alt="${service.tendichvu}" class="detail-image">`;
+            if (phuongtiens.length > 0) {
+                const first = phuongtiens[0];   // đã sort theo thutu rồi
 
-                if (phuongtiens.length > 0) {
-                    phuongtiens.sort((a, b) => (a.thutu || 999) - (b.thutu || 999));
-                    const first = phuongtiens[0];
-                    if (first.link) {
-                        if (first.loai === "VIDEO") {
-                            mediaHTML = `<video src="${first.link}" controls muted class="detail-image"></video>`;
-                        } else {
-                            mediaHTML = `<img src="${first.link}" alt="${service.tendichvu}" class="detail-image">`;
-                        }
+                if (first.link) {
+                    let imageUrl = first.link;
+
+                    // Nếu là link relative thì ghép full URL
+                    if (imageUrl.startsWith('/')) {
+                        imageUrl = API_BASE_URL + imageUrl;
+                    }
+
+                    if (first.loai === "VIDEO") {
+                        mediaHTML = `<video src="${imageUrl}" controls muted class="detail-image"></video>`;
+                    } else {
+                        mediaHTML = `<img src="${imageUrl}" alt="${service.tendichvu}" 
+                                       class="detail-image" 
+                                       onerror="this.src='image/b1.jpg'">`;
                     }
                 }
-
-                const html = `
-                    <div class="detail-image-wrapper">
-                        ${mediaHTML}
-                    </div>
-                    <div class="detail-info">
-                        <h1>${service.tendichvu}</h1>
-                        <p class="detail-price">${Number(service.dongia || 0).toLocaleString('vi-VN')} VND</p>
-                        <p class="detail-desc">${service.mota || 'Đang cập nhật mô tả chi tiết cho dịch vụ này.'}</p>
-                        
-                        <div class="detail-button-group">
-                            <a href="https://tranthitrucly.io.vn/datlich" 
-                               class="btn-detail btn-datlich">Đặt lịch ngay</a>
-                            <a href="https://forman-omega.vercel.app/" 
-                               class="btn-detail btn-back">← Quay lại danh sách dịch vụ</a>
-                        </div>
-                    </div>
-                `;
-
-                container.innerHTML = html;
-                loading.style.display = 'none';
-
-            } catch (err) {
-                loading.innerHTML = `<p class="error-text">Lỗi kết nối. Vui lòng thử lại sau.</p>`;
             }
+
+            const html = `
+                <div class="detail-image-wrapper">
+                    ${mediaHTML}
+                </div>
+                <div class="detail-info">
+                    <h1>${service.tendichvu}</h1>
+                    <p class="detail-price">${Number(service.dongia || 0).toLocaleString('vi-VN')} VND</p>
+                    <p class="detail-desc">${service.mota || 'Đang cập nhật mô tả chi tiết cho dịch vụ này.'}</p>
+                    
+                    <div class="detail-button-group">
+                        <a href="https://tranthitrucly.io.vn/datlich" 
+                           class="btn-detail btn-datlich">Đặt lịch ngay</a>
+                        <a href="https://forman-omega.vercel.app/" 
+                           class="btn-detail btn-back">← Quay lại danh sách dịch vụ</a>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = html;
+            loading.style.display = 'none';
+
+        } catch (err) {
+            console.error(err);
+            loading.innerHTML = `<p class="error-text">Lỗi kết nối server. Vui lòng thử lại sau.</p>`;
         }
+    }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            loadServiceDetail();
+    document.addEventListener('DOMContentLoaded', () => {
+        loadServiceDetail();
 
-            const ham = document.getElementById('hamburgerMenu');
-            const menu = document.getElementById('navMenu');
-            ham.addEventListener('click', () => {
-                menu.classList.toggle('show');
-                ham.classList.toggle('active');
-            });
-
-            const backToTop = document.getElementById('backToTop');
-            window.addEventListener('scroll', () => {
-                backToTop.classList.toggle('show', window.scrollY > 400);
-            });
-            backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+        const ham = document.getElementById('hamburgerMenu');
+        const menu = document.getElementById('navMenu');
+        ham.addEventListener('click', () => {
+            menu.classList.toggle('show');
+            ham.classList.toggle('active');
         });
-    </script>
+
+        const backToTop = document.getElementById('backToTop');
+        window.addEventListener('scroll', () => {
+            backToTop.classList.toggle('show', window.scrollY > 400);
+        });
+        backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    });
+</script>
 
     <!-- Footer -->
     <footer class="footer">
