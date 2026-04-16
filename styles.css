@@ -553,3 +553,29 @@ body {
     color: #666;
     font-size: 18px;
 }
+.thumbnails {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+
+.thumbnail {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.thumbnail:hover {
+    border-color: #00bcd4;
+    transform: scale(1.05);
+}
+
+.thumbnail.active {
+    border-color: #00bcd4;
+    box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.25);
+}
